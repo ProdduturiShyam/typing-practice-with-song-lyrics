@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VocaType Video Clone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="VocaType home"><span class="brand-mark">V</span><span>VocaType</span></a>
+    </header>
+
+    <div class="fullscreen-stage" id="fullscreenStage">
+      <section class="video-card" aria-label="Video preview">
+        <div class="video-screen">
+          <div class="play-orb">▶</div>
+          <p>Video preview</p>
+          <small>Choose a video to start practicing</small>
+        </div>
+        <div class="video-caption">
+          <span class="live-dot"></span>
+          <span>Ready when you are</span>
+        </div>
+      </section>
+      <div class="video-actions">
+        <button class="toolbar-button choose-button" id="chooseButton">Choose song</button>
+        <button class="toolbar-button" id="fullscreenButton">⛶ Full screen</button>
+      </div>
+
+      <section class="practice-panel" id="practice">
+      <div class="toolbar">
+        <button class="toolbar-button" id="restartButton">↻ <span>Restart</span></button>
+        <span class="selected-song" id="selectedSong">No song selected</span>
+      </div>
+
+      <div class="stats-row">
+        <div><span>Line</span><strong id="lineStat">1/8</strong></div>
+        <div><span>WPM</span><strong id="wpmStat">0</strong></div>
+        <div><span>Accuracy</span><strong id="accuracyStat">100%</strong></div>
+      </div>
+
+      <div class="controls">
+        <button id="playButton" aria-label="Play or pause">▶</button>
+      </div>
+      <div class="progress"><span id="progressBar"></span></div>
+
+      <div class="typing-wrap" id="typingWrap">
+        <div class="prompt" id="prompt" aria-live="polite"></div>
+        <textarea id="typingInput" aria-label="Typing input area" placeholder="Tip: Shift+Tab to go back" spellcheck="false"></textarea>
+      </div>
+      </section>
+    </div>
+
+    <footer>
+      <a href="#about">About</a><a href="#terms">Terms of Service</a><a href="#privacy">Privacy Policy</a>
+      <a href="https://vocatype.app/en/">VocaType</a><a href="https://maps.vocatype.app/en">VocaType Maps</a>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <div class="song-modal" id="songModal" hidden>
+    <div class="song-dialog" role="dialog" aria-modal="true" aria-labelledby="songTitle">
+      <button class="close-modal" id="closeSongs" aria-label="Close song picker">×</button>
+      <h2 id="songTitle">Choose a built-in song</h2>
+      <p>Choose a song to start YouTube playback and typing practice.</p>
+      <div class="picker-section">
+        <div class="picker-heading">Telugu songs</div>
+        <div class="built-in-list" id="teluguSongs"></div>
+      </div>
+      <div class="picker-section">
+        <div class="picker-heading">English songs</div>
+        <div class="built-in-list" id="englishSongs"></div>
+      </div>
+      <div class="picker-section" id="otherSongsSection" hidden>
+        <div class="picker-heading">Other songs</div>
+        <div class="built-in-list" id="otherSongs"></div>
+      </div>
+    </div>
+  </div>
+  <div class="result-modal" id="resultModal" hidden>
+    <div class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <span class="eyebrow">PRACTICE COMPLETE</span>
+      <h2 id="resultTitle">Great work!</h2>
+      <p id="resultSong">Song completed</p>
+      <p class="result-wait" id="resultWait">Typing is complete. Waiting for the song to finish...</p>
+      <div class="result-grid" id="resultGrid">
+        <div><span>Average WPM</span><strong id="resultWpm">0</strong></div>
+        <div><span>Accuracy</span><strong id="resultAccuracy">100%</strong></div>
+        <div><span>Characters</span><strong id="resultCharacters">0</strong></div>
+      </div>
+      <button class="secondary result-skip" id="resultSkip">Skip to results</button>
+      <button class="secondary result-quit" id="resultQuit">Quit practice</button>
+      <button class="primary result-restart" id="resultRestart">Restart song</button>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
