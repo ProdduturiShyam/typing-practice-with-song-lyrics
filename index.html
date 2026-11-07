@@ -12,7 +12,10 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#" aria-label="LyricRush home"><span class="brand-mark">L</span><span>LyricRush</span></a>
+      <a class="brand" href="#" aria-label="LyricRush home">
+        <span class="brand-mark">L</span>
+        <span>LyricRush</span>
+      </a>
     </header>
 
     <div class="fullscreen-stage" id="fullscreenStage">
@@ -27,52 +30,75 @@
           <span>Ready when you are</span>
         </div>
       </section>
+
       <div class="video-actions">
-        <button class="toolbar-button choose-button" id="chooseButton">Choose song</button>
-        <button class="toolbar-button" id="fullscreenButton">⛶ Full screen</button>
+        <button class="action-btn choose-button" id="chooseButton">
+          <span>🎵 Choose song</span>
+        </button>
+        <button class="action-btn fullscreen-btn" id="fullscreenButton">
+          <span>⛶ Full screen</span>
+        </button>
       </div>
 
       <section class="practice-panel" id="practice">
-      <div class="toolbar">
-        <button class="toolbar-button" id="restartButton">↻ <span>Restart</span></button>
-        <span class="selected-song" id="selectedSong">No song selected</span>
-      </div>
+        <div class="toolbar">
+          <button class="toolbar-button" id="restartButton">↻ <span>Restart</span></button>
+          <span class="selected-song" id="selectedSong">No song selected</span>
+        </div>
 
-      <div class="stats-row">
-        <div><span>Line</span><strong id="lineStat">1/8</strong></div>
-        <div><span>WPM</span><strong id="wpmStat">0</strong></div>
-        <div><span>Accuracy</span><strong id="accuracyStat">100%</strong></div>
-      </div>
+        <div class="stats-row">
+          <div>
+            <span>Line</span>
+            <strong id="lineStat">1/8</strong>
+          </div>
+          <div>
+            <span>WPM</span>
+            <strong id="wpmStat">0</strong>
+          </div>
+          <div>
+            <span>Accuracy</span>
+            <strong id="accuracyStat">100%</strong>
+          </div>
+        </div>
 
-      <div class="controls">
-        <button id="playButton" aria-label="Play or pause">▶</button>
-      </div>
-      <div class="progress"><span id="progressBar"></span></div>
+        <div class="controls">
+          <button id="playButton" aria-label="Play or pause">▶</button>
+        </div>
+        <div class="progress"><span id="progressBar"></span></div>
 
-      <div class="typing-wrap" id="typingWrap">
-        <div class="prompt" id="prompt" aria-live="polite"></div>
-        <textarea id="typingInput" aria-label="Typing input area" placeholder="Tip: Shift+Tab to go back" spellcheck="false"></textarea>
-      </div>
+        <div class="typing-wrap" id="typingWrap">
+          <div class="prompt" id="prompt" aria-live="polite"></div>
+          <textarea id="typingInput" aria-label="Typing input area" placeholder="Start typing the lyrics here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+        </div>
       </section>
     </div>
 
     <footer>
-      <a href="#about">About</a><a href="#terms">Terms of Service</a><a href="#privacy">Privacy Policy</a>
-      <a href="#about">LyricRush</a><a href="#practice">Practice</a>
+      <a href="#about">About</a>
+      <a href="#terms">Terms of Service</a>
+      <a href="#privacy">Privacy Policy</a>
+      <a href="#about">LyricRush</a>
+      <a href="#practice">Practice</a>
     </footer>
   </main>
 
   <div class="toast" id="toast" role="status"></div>
+
   <div class="song-modal" id="songModal" hidden>
     <div class="song-dialog" role="dialog" aria-modal="true" aria-labelledby="songTitle">
       <button class="close-modal" id="closeSongs" aria-label="Close song picker">×</button>
-      <h2 id="songTitle">Choose a built-in song</h2>
-      <p>Choose a song to start YouTube playback and typing practice.</p>
-      <div class="picker-section">
+      <h2 id="songTitle">Choose a song</h2>
+      <p>Select a song to start playback and sync your typing practice.</p>
+      
+      <div class="song-search-wrap">
+        <input type="search" id="songSearch" placeholder="🔍 Search by song or artist..." autocomplete="off">
+      </div>
+
+      <div class="picker-section" id="teluguSection">
         <div class="picker-heading">Telugu songs</div>
         <div class="built-in-list" id="teluguSongs"></div>
       </div>
-      <div class="picker-section">
+      <div class="picker-section" id="englishSection">
         <div class="picker-heading">English songs</div>
         <div class="built-in-list" id="englishSongs"></div>
       </div>
@@ -80,8 +106,10 @@
         <div class="picker-heading">Other songs</div>
         <div class="built-in-list" id="otherSongs"></div>
       </div>
+      <div class="no-songs-found" id="noSongsFound" hidden>No songs found matching your search.</div>
     </div>
   </div>
+
   <div class="result-modal" id="resultModal" hidden>
     <div class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
       <span class="eyebrow">PRACTICE COMPLETE</span>
@@ -93,11 +121,14 @@
         <div><span>Accuracy</span><strong id="resultAccuracy">100%</strong></div>
         <div><span>Characters</span><strong id="resultCharacters">0</strong></div>
       </div>
-      <button class="secondary result-skip" id="resultSkip">Skip to results</button>
-      <button class="secondary result-quit" id="resultQuit">Quit practice</button>
-      <button class="primary result-restart" id="resultRestart">Restart song</button>
+      <div class="result-actions">
+        <button class="primary result-restart" id="resultRestart">Restart song</button>
+        <button class="secondary result-skip" id="resultSkip">Skip to results</button>
+        <button class="secondary result-quit" id="resultQuit">Quit practice</button>
+      </div>
     </div>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>

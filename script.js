@@ -157,7 +157,7 @@ const teluguConsonants = {
   "ష":"sh","స":"s","హ":"h","ళ":"l","ఱ":"r"
 };
 const teluguVowels = {"అ":"a","ఆ":"aa","ఇ":"i","ఈ":"ee","ఉ":"u","ఊ":"oo","ఋ":"ru","ఎ":"e","ఏ":"ae","ఐ":"ai","ఒ":"o","ఓ":"oo","ఔ":"au"};
-const teluguSigns = {"ా":"aa","ి":"i","ీ":"ee","ు":"u","ూ":"oo","ృ":"ru","ె":"e","ే":"ae","ై":"ai","ొ":"o","ో":"oo","ౌ":"au","ం":"m","ః":"h"};
+const teluguSigns = {"ా":"aa","ి":"i","ీ":"ee","ు":"u","ూ":"oo","ృ":"ru","ె":"e","ే":"ae","ై":"ai","ొ":"o","ో":"oo","ఔ":"au","ం":"m","ః":"h"};
 
 function transliterateTelugu(text) {
   if (!/[ఀ-౿]/.test(text)) return text;
@@ -272,6 +272,7 @@ function nextLine() {
     renderPrompt();
   } else showToast("Practice complete!");
 }
+
 function finishPractice() {
   if (!typingComplete) return;
   const elapsedMinutes = Math.max((Date.now() - practiceStartedAt) / 60000, 1 / 60);
@@ -287,6 +288,7 @@ function finishPractice() {
   if (mediaFrame && !songEnded) mediaFrame.contentWindow.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), "*");
   resultModal.hidden = false;
 }
+
 function waitForSongFinish() {
   typingComplete = true;
   document.querySelector("#resultTitle").textContent = "Typing complete!";
@@ -295,11 +297,13 @@ function waitForSongFinish() {
   document.querySelector("#resultSkip").hidden = false;
   resultModal.hidden = false;
 }
+
 function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 1800);
 }
+
 input.addEventListener("input", () => {
   if (!startedAt && input.value) startedAt = Date.now();
   renderPrompt();
@@ -313,14 +317,17 @@ input.addEventListener("input", () => {
     else resumePlaybackAfterLine();
   }
 });
+
 input.addEventListener("keydown", event => {
   event.stopPropagation();
 });
+
 document.addEventListener("keydown", event => {
   if (document.activeElement === input && event.key.toLowerCase() === "f") {
     event.stopPropagation();
   }
 }, true);
+
 document.querySelector("#restartButton").addEventListener("click", () => {
   lineIndex = 0;
   input.value = "";
@@ -344,6 +351,7 @@ document.querySelector("#restartButton").addEventListener("click", () => {
   input.focus();
   showToast("Song restarted");
 });
+
 document.querySelector("#playButton").addEventListener("click", () => {
   if (mediaFrame && mediaFrame.src.includes("youtube.com/embed")) {
     mediaFrame.contentWindow.postMessage(JSON.stringify({ event: "command", func: isPlaying ? "pauseVideo" : "playVideo", args: [] }), "*");
@@ -363,6 +371,7 @@ document.querySelector("#playButton").addEventListener("click", () => {
     showToast("Use a YouTube link for synchronized playback");
   }
 });
+
 function addSongButton(container, song) {
   const button = document.createElement("button");
   button.className = "built-in-song";
@@ -370,24 +379,66 @@ function addSongButton(container, song) {
   button.addEventListener("click", () => startBuiltInSong(song));
   container.appendChild(button);
 }
+
 const songGroups = {
   Telugu: document.querySelector("#teluguSongs"),
   English: document.querySelector("#englishSongs"),
   Other: document.querySelector("#otherSongs")
 };
+
 builtInSongs.forEach(song => {
   const group = songGroups[song.language] || songGroups.Other;
   addSongButton(group, song);
 });
+
 document.querySelector("#otherSongsSection").hidden = !songGroups.Other.children.length;
-document.querySelector("#chooseButton").addEventListener("click", () => { songModal.hidden = false; });
-document.querySelector("#closeSongs").addEventListener("click", () => { songModal.hidden = true; });
-songModal.addEventListener("click", event => { if (event.target === songModal) songModal.hidden = true; });
+
+const songSearch = document.querySelector("#songSearch");
+const noSongsFound = document.querySelector("#noSongsFound");
+
+if (songSearch) {
+  songSearch.addEventListener("input", () => {
+    const query = songSearch.value.trim().toLowerCase();
+    let totalVisible = 0;
+    document.querySelectorAll(".built-in-song").forEach(btn => {
+      const match = !query || btn.textContent.toLowerCase().includes(query);
+      btn.style.display = match ? "flex" : "none";
+      if (match) totalVisible++;
+    });
+    document.querySelectorAll(".picker-section").forEach(section => {
+      const hasVisible = Array.from(section.querySelectorAll(".built-in-song")).some(btn => btn.style.display !== "none");
+      section.style.display = hasVisible ? "block" : "none";
+    });
+    if (noSongsFound) {
+      noSongsFound.hidden = totalVisible > 0;
+    }
+  });
+}
+
+document.querySelector("#chooseButton").addEventListener("click", () => {
+  songModal.hidden = false;
+  if (songSearch) {
+    songSearch.value = "";
+    songSearch.dispatchEvent(new Event("input"));
+    setTimeout(() => songSearch.focus(), 120);
+  }
+});
+
+document.querySelector("#closeSongs").addEventListener("click", () => {
+  songModal.hidden = true;
+});
+
+songModal.addEventListener("click", event => {
+  if (event.target === songModal) songModal.hidden = true;
+});
+
 document.querySelector("#resultRestart").addEventListener("click", () => {
   resultModal.hidden = true;
   document.querySelector("#restartButton").click();
 });
+
 document.querySelector("#resultSkip").addEventListener("click", finishPractice);
+
 document.querySelector("#resultQuit").addEventListener("click", () => {
   resultModal.hidden = true;
   typingComplete = false;
@@ -405,7 +456,18 @@ document.querySelector("#resultQuit").addEventListener("click", () => {
   renderPrompt();
   showToast("Practice ended");
 });
+
 document.querySelector(".typing-wrap").addEventListener("click", () => input.focus());
+
+// Mobile auto-scroll when user focuses on input
+input.addEventListener("focus", () => {
+  if (window.innerWidth <= 768) {
+    setTimeout(() => {
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 280);
+  }
+});
+
 window.addEventListener("message", event => {
   if (!mediaFrame || event.source !== mediaFrame.contentWindow) return;
   let message;
@@ -421,18 +483,55 @@ window.addEventListener("message", event => {
     if (typingComplete) finishPractice();
   }
 });
-document.querySelector("#fullscreenButton").addEventListener("click", async () => {
-  const stage = document.querySelector("#fullscreenStage");
-  if (document.fullscreenElement) {
-    await document.exitFullscreen();
+
+const fullscreenButton = document.querySelector("#fullscreenButton");
+const stage = document.querySelector("#fullscreenStage");
+
+function updateFullscreenState() {
+  const isFs = Boolean(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    stage.classList.contains("fullscreen-fallback")
+  );
+  if (fullscreenButton) {
+    fullscreenButton.textContent = isFs ? "⛶ Small screen" : "⛶ Full screen";
+  }
+}
+
+fullscreenButton.addEventListener("click", async () => {
+  const isFs = Boolean(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    stage.classList.contains("fullscreen-fallback")
+  );
+
+  if (isFs) {
+    if (document.exitFullscreen) {
+      try { await document.exitFullscreen(); } catch {}
+    } else if (document.webkitExitFullscreen) {
+      try { document.webkitExitFullscreen(); } catch {}
+    }
+    stage.classList.remove("fullscreen-fallback");
+    updateFullscreenState();
     return;
   }
-  await stage.requestFullscreen();
+
+  try {
+    if (stage.requestFullscreen) {
+      await stage.requestFullscreen();
+    } else if (stage.webkitRequestFullscreen) {
+      stage.webkitRequestFullscreen();
+    } else {
+      stage.classList.add("fullscreen-fallback");
+    }
+  } catch {
+    stage.classList.add("fullscreen-fallback");
+  }
+  updateFullscreenState();
 });
-document.addEventListener("fullscreenchange", () => {
-  const fullscreenButton = document.querySelector("#fullscreenButton");
-  const isFullscreen = document.fullscreenElement === document.querySelector("#fullscreenStage");
-  fullscreenButton.textContent = isFullscreen ? "⛶ Small screen" : "⛶ Full screen";
-});
+
+document.addEventListener("fullscreenchange", updateFullscreenState);
+document.addEventListener("webkitfullscreenchange", updateFullscreenState);
+
 renderPrompt();
 startBuiltInSong(builtInSongs.find(song => song.title === "Believer"));
