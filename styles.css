@@ -409,6 +409,12 @@ html, body {
   box-shadow: 0 0 0 2px rgba(169, 232, 91, 0.2);
 }
 
+.typing-wrap textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
 /* Footer */
 footer {
   display: flex;

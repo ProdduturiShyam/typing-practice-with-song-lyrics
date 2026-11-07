@@ -21,19 +21,22 @@ const videoScreen = document.querySelector(".video-screen");
 const songModal = document.querySelector("#songModal");
 const resultModal = document.querySelector("#resultModal");
 const selectedSong = document.querySelector("#selectedSong");
+
 let lineIndex = 0;
 let startedAt = 0;
 let timedLyrics = [];
 let mediaFrame = null;
 let isPlaying = false;
 let waitingForLine = false;
-let playbackSeconds = 0;
-let playbackRunStartedAt = 0;
+let isIntroPlaying = false;
+let videoCurrentTime = 0;
+let lastTimeUpdate = 0;
 let totalCorrect = 0;
 let totalTyped = 0;
 let practiceStartedAt = 0;
 let typingComplete = false;
 let songEnded = false;
+
 const builtInSongs = [
   { title: "Hook Step", artist: "Bheems Ceciroleo", language: "Telugu", videoId: "6KK5IPk7kB0" },
   { title: "Gira Gira Gingiraagirey", artist: "Mickey J. Meyer", language: "Telugu", videoId: "7Z5abg_C2dU" },
@@ -96,43 +99,110 @@ const builtInSongs = [
 
 function setTimedLyrics(lyrics) {
   timedLyrics = lyrics;
+  practiceLines = lyrics.map(item => item.text);
+  lineIndex = 0;
 }
 
 function syncLyricsToPlayback(seconds) {
-  if (!timedLyrics.length) return;
-  const nextIndex = timedLyrics.reduce((selected, lyric, index) => lyric.time <= seconds ? index : selected, 0);
-  const currentLine = practiceLines[lineIndex] || "";
-  const lineIncomplete = input.value.length < currentLine.length;
-  if (nextIndex > lineIndex && nextIndex < practiceLines.length && lineIncomplete) {
-    pausePlaybackForTyping();
-    waitingForLine = true;
+  if (!timedLyrics || !timedLyrics.length) return;
+
+  const firstLyricTime = timedLyrics[0].time;
+
+  // 1. If currently in the intro before the first vocal line plays
+  if (seconds < firstLyricTime) {
+    isIntroPlaying = true;
+    lineIndex = 0;
+    input.disabled = true;
+    input.placeholder = "🎵 Song is playing... get ready to type!";
+    renderIntro(seconds, firstLyricTime);
+    return;
+  }
+
+  // Vocal has arrived!
+  if (isIntroPlaying) {
+    isIntroPlaying = false;
+    input.disabled = false;
+    input.placeholder = "Type this line...";
+    renderPrompt();
+    input.focus();
+  }
+
+  // 2. Identify which line the song is playing at this second
+  let songLineIndex = 0;
+  for (let i = 0; i < timedLyrics.length; i++) {
+    if (timedLyrics[i].time <= seconds) {
+      songLineIndex = i;
+    } else {
+      break;
+    }
+  }
+
+  // 3. First the song plays, THEN we type that particular line:
+  // If the song has finished singing the current lineIndex (song progressed past lineIndex):
+  if (songLineIndex > lineIndex) {
+    const currentLineText = practiceLines[lineIndex] || "";
+    const isLineComplete = input.value.length >= currentLineText.length;
+
+    // If user hasn't finished typing that line yet, pause song at the end of the line
+    // to give them time to type what they just heard!
+    if (!isLineComplete && isPlaying) {
+      pausePlaybackForTyping();
+      waitingForLine = true;
+      return;
+    }
+  }
+
+  // If the song is currently singing lineIndex, keep prompt refreshed
+  if (songLineIndex === lineIndex && !waitingForLine) {
+    renderPrompt();
   }
 }
 
-setInterval(() => {
-  if (isPlaying) {
-    const elapsed = playbackSeconds + (Date.now() - playbackRunStartedAt) / 1000;
-    syncLyricsToPlayback(elapsed);
-  }
-}, 250);
+function renderIntro(currentSec, startSec) {
+  const remaining = Math.max(1, Math.ceil(startSec - currentSec));
+  const firstLine = transliterateTelugu(practiceLines[0] || "");
+  prompt.innerHTML = `
+    <div style="font-size:13px; color:var(--accent); margin-bottom:8px; font-weight:600;">
+      🎵 Song playing (intro) &mdash; first line begins in ${remaining}s...
+    </div>
+    <div style="font-size:15px; color:var(--muted); line-height: 1.5;">
+      ${firstLine}
+    </div>
+  `;
+  lineStat.textContent = `1/${practiceLines.length}`;
+  progressBar.style.width = "0%";
+}
 
 function pausePlaybackForTyping() {
   if (!mediaFrame) return;
   mediaFrame.contentWindow.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), "*");
-  playbackSeconds += (Date.now() - playbackRunStartedAt) / 1000;
   isPlaying = false;
   document.querySelector("#playButton").textContent = "▶";
-  showToast("Paused - finish the line to continue");
+  input.placeholder = "⏸️ Song paused — finish typing this line to continue!";
+  input.focus();
+  showToast("Paused — type the line to continue song");
 }
 
 function resumePlaybackAfterLine() {
-  if (!mediaFrame || !waitingForLine) return;
+  if (!mediaFrame) return;
   mediaFrame.contentWindow.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
   waitingForLine = false;
   isPlaying = true;
-  playbackRunStartedAt = Date.now();
+  lastTimeUpdate = Date.now();
   document.querySelector("#playButton").textContent = "Ⅱ";
+  input.placeholder = "Type this line...";
 }
+
+// Background timer to interpolate and check synchronization
+setInterval(() => {
+  if (isPlaying) {
+    let current = videoCurrentTime;
+    if (lastTimeUpdate > 0) {
+      current += (Date.now() - lastTimeUpdate) / 1000;
+    }
+    syncLyricsToPlayback(current);
+  }
+}, 120);
 
 function parseLrc(contents) {
   const entries = [];
@@ -157,10 +227,10 @@ const teluguConsonants = {
   "ష":"sh","స":"s","హ":"h","ళ":"l","ఱ":"r"
 };
 const teluguVowels = {"అ":"a","ఆ":"aa","ఇ":"i","ఈ":"ee","ఉ":"u","ఊ":"oo","ఋ":"ru","ఎ":"e","ఏ":"ae","ఐ":"ai","ఒ":"o","ఓ":"oo","ఔ":"au"};
-const teluguSigns = {"ా":"aa","ి":"i","ీ":"ee","ు":"u","ూ":"oo","ృ":"ru","ె":"e","ే":"ae","ై":"ai","ొ":"o","ో":"oo","ఔ":"au","ం":"m","ః":"h"};
+const teluguSigns = {"ా":"aa","ి":"i","ీ":"ee","ు":"u","ూ":"oo","ృ":"ru","ె":"e","ే":"ae","ై":"ai","ొ":"o","ో":"oo","ౌ":"au","ం":"m","ః":"h"};
 
 function transliterateTelugu(text) {
-  if (!/[ఀ-౿]/.test(text)) return text;
+  if (!text || !/[ఀ-౿]/.test(text)) return text || "";
   let result = "";
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
@@ -215,17 +285,21 @@ async function startBuiltInSong(song) {
   mediaFrame = videoScreen.querySelector("iframe");
   isPlaying = true;
   waitingForLine = false;
+  isIntroPlaying = false;
   typingComplete = false;
   songEnded = false;
-  playbackSeconds = 0;
-  playbackRunStartedAt = Date.now();
-  startedAt = Date.now();
+  videoCurrentTime = 0;
+  lastTimeUpdate = Date.now();
+  startedAt = 0;
+  document.querySelector("#playButton").textContent = "Ⅱ";
+
   mediaFrame.addEventListener("load", () => {
     const target = mediaFrame.contentWindow;
     target.postMessage(JSON.stringify({ event: "listening", id: 1 }), "*");
     target.postMessage(JSON.stringify({ event: "command", func: "addEventListener", args: ["onStateChange"] }), "*");
     target.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
   }, { once: true });
+
   try {
     const lyrics = await findLyricsForBuiltInSong(song);
     practiceLines = lyrics.map(item => item.text);
@@ -236,19 +310,34 @@ async function startBuiltInSong(song) {
     totalTyped = 0;
     practiceStartedAt = Date.now();
     resultModal.hidden = true;
-    renderPrompt();
     setTimedLyrics(lyrics);
     selectedSong.textContent = `${song.title} (${lyrics.length} lines)`;
-    showToast("Song playing - type with the beat");
-    input.focus();
+
+    // Check if song has an intro before the first vocal
+    if (lyrics.length && lyrics[0].time > 1.0) {
+      isIntroPlaying = true;
+      input.disabled = true;
+      input.placeholder = "🎵 Song is playing... get ready to type!";
+      renderIntro(0, lyrics[0].time);
+    } else {
+      isIntroPlaying = false;
+      input.disabled = false;
+      input.placeholder = "Type this line...";
+      renderPrompt();
+    }
+
+    showToast("Song playing — listen and type with the music!");
   } catch (error) {
     showToast(error.message);
+    input.disabled = false;
+    renderPrompt();
   }
 }
 
 function renderPrompt() {
+  if (isIntroPlaying) return;
   const value = input.value;
-  const text = transliterateTelugu(practiceLines[lineIndex]);
+  const text = transliterateTelugu(practiceLines[lineIndex] || "");
   practiceLines[lineIndex] = text;
   prompt.innerHTML = [...text].map((character, index) => {
     const typed = value[index];
@@ -256,21 +345,12 @@ function renderPrompt() {
     return `<span class="${className}">${character === " " ? "&nbsp;" : character}</span>`;
   }).join("");
   lineStat.textContent = `${lineIndex + 1}/${practiceLines.length}`;
-  const progress = Math.min(value.length / text.length, 1) * 100;
+  const progress = Math.min(value.length / (text.length || 1), 1) * 100;
   progressBar.style.width = `${progress}%`;
   const correct = [...value].filter((character, index) => character === text[index]).length;
   accuracyStat.textContent = `${value.length ? Math.round(correct / value.length * 100) : 100}%`;
   const elapsed = startedAt ? (Date.now() - startedAt) / 60000 : 0;
   wpmStat.textContent = elapsed ? Math.max(0, Math.round(correct / 5 / elapsed)) : 0;
-}
-
-function nextLine() {
-  if (lineIndex < practiceLines.length - 1) {
-    lineIndex += 1;
-    input.value = "";
-    startedAt = 0;
-    renderPrompt();
-  } else showToast("Practice complete!");
 }
 
 function finishPractice() {
@@ -304,17 +384,31 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove("show"), 1800);
 }
 
+// User typing handler
 input.addEventListener("input", () => {
+  if (isIntroPlaying) return;
   if (!startedAt && input.value) startedAt = Date.now();
   renderPrompt();
-  const currentText = practiceLines[lineIndex];
+  const currentText = practiceLines[lineIndex] || "";
+
   if (input.value.length >= currentText.length) {
     totalTyped += input.value.length;
     totalCorrect += [...input.value].filter((character, index) => character === currentText[index]).length;
     const isFinalLine = lineIndex === practiceLines.length - 1;
-    nextLine();
-    if (isFinalLine) waitForSongFinish();
-    else resumePlaybackAfterLine();
+
+    if (isFinalLine) {
+      waitForSongFinish();
+    } else {
+      lineIndex += 1;
+      input.value = "";
+      startedAt = 0;
+      renderPrompt();
+
+      // If playback was paused waiting for this line, resume to play the next line!
+      if (waitingForLine) {
+        resumePlaybackAfterLine();
+      }
+    }
   }
 });
 
@@ -332,6 +426,9 @@ document.querySelector("#restartButton").addEventListener("click", () => {
   lineIndex = 0;
   input.value = "";
   waitingForLine = false;
+  isIntroPlaying = false;
+  videoCurrentTime = 0;
+  lastTimeUpdate = Date.now();
   startedAt = Date.now();
   totalCorrect = 0;
   totalTyped = 0;
@@ -339,36 +436,52 @@ document.querySelector("#restartButton").addEventListener("click", () => {
   songEnded = false;
   practiceStartedAt = Date.now();
   resultModal.hidden = true;
-  playbackSeconds = 0;
-  playbackRunStartedAt = Date.now();
-  renderPrompt();
+
   if (mediaFrame) {
     mediaFrame.contentWindow.postMessage(JSON.stringify({ event: "command", func: "seekTo", args: [0, true] }), "*");
     mediaFrame.contentWindow.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
     isPlaying = true;
     document.querySelector("#playButton").textContent = "Ⅱ";
   }
-  input.focus();
+
+  if (timedLyrics.length && timedLyrics[0].time > 1.0) {
+    isIntroPlaying = true;
+    input.disabled = true;
+    input.placeholder = "🎵 Song is playing... get ready to type!";
+    renderIntro(0, timedLyrics[0].time);
+  } else {
+    input.disabled = false;
+    input.placeholder = "Type this line...";
+    renderPrompt();
+    input.focus();
+  }
   showToast("Song restarted");
 });
 
 document.querySelector("#playButton").addEventListener("click", () => {
   if (mediaFrame && mediaFrame.src.includes("youtube.com/embed")) {
-    mediaFrame.contentWindow.postMessage(JSON.stringify({ event: "command", func: isPlaying ? "pauseVideo" : "playVideo", args: [] }), "*");
     if (isPlaying) {
-      playbackSeconds += (Date.now() - playbackRunStartedAt) / 1000;
+      mediaFrame.contentWindow.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), "*");
+      isPlaying = false;
+      document.querySelector("#playButton").textContent = "▶";
+      showToast("Paused");
     } else {
-      playbackRunStartedAt = Date.now();
-    }
-    isPlaying = !isPlaying;
-    document.querySelector("#playButton").textContent = isPlaying ? "Ⅱ" : "▶";
-    if (isPlaying) {
-      if (!startedAt) startedAt = Date.now();
-      showToast("Song and lyrics started");
+      mediaFrame.contentWindow.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
+      isPlaying = true;
+      lastTimeUpdate = Date.now();
+      document.querySelector("#playButton").textContent = "Ⅱ";
+      showToast("Playing");
+      if (!isIntroPlaying) input.focus();
     }
   } else {
     input.focus();
-    showToast("Use a YouTube link for synchronized playback");
+    showToast("Choose a song to start");
+  }
+});
+
+videoScreen.addEventListener("click", () => {
+  if (mediaFrame && !isPlaying) {
+    document.querySelector("#playButton").click();
   }
 });
 
@@ -457,7 +570,9 @@ document.querySelector("#resultQuit").addEventListener("click", () => {
   showToast("Practice ended");
 });
 
-document.querySelector(".typing-wrap").addEventListener("click", () => input.focus());
+document.querySelector(".typing-wrap").addEventListener("click", () => {
+  if (!isIntroPlaying) input.focus();
+});
 
 // Mobile auto-scroll when user focuses on input
 input.addEventListener("focus", () => {
@@ -468,6 +583,7 @@ input.addEventListener("focus", () => {
   }
 });
 
+// Listen to YouTube player time updates and state changes
 window.addEventListener("message", event => {
   if (!mediaFrame || event.source !== mediaFrame.contentWindow) return;
   let message;
@@ -476,11 +592,44 @@ window.addEventListener("message", event => {
   } catch {
     return;
   }
-  if (message?.event === "infoDelivery" && message.info?.playerState === 0) {
-    songEnded = true;
-    isPlaying = false;
-    document.querySelector("#playButton").textContent = "▶";
-    if (typingComplete) finishPractice();
+
+  if (message?.event === "infoDelivery") {
+    if (typeof message.info?.currentTime === "number") {
+      videoCurrentTime = message.info.currentTime;
+      lastTimeUpdate = Date.now();
+      syncLyricsToPlayback(videoCurrentTime);
+    }
+    if (typeof message.info?.playerState === "number") {
+      const state = message.info.playerState;
+      if (state === 1) {
+        isPlaying = true;
+        document.querySelector("#playButton").textContent = "Ⅱ";
+      } else if (state === 2) {
+        isPlaying = false;
+        document.querySelector("#playButton").textContent = "▶";
+      } else if (state === 0) {
+        songEnded = true;
+        isPlaying = false;
+        document.querySelector("#playButton").textContent = "▶";
+        if (typingComplete) finishPractice();
+      }
+    }
+  }
+
+  if (message?.event === "onStateChange") {
+    const state = message.info;
+    if (state === 1) {
+      isPlaying = true;
+      document.querySelector("#playButton").textContent = "Ⅱ";
+    } else if (state === 2) {
+      isPlaying = false;
+      document.querySelector("#playButton").textContent = "▶";
+    } else if (state === 0) {
+      songEnded = true;
+      isPlaying = false;
+      document.querySelector("#playButton").textContent = "▶";
+      if (typingComplete) finishPractice();
+    }
   }
 });
 
