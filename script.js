@@ -684,3 +684,4 @@ document.addEventListener("webkitfullscreenchange", updateFullscreenState);
 
 renderPrompt();
 startBuiltInSong(builtInSongs.find(song => song.title === "Believer"));
+     
